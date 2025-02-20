@@ -55,25 +55,25 @@ class ModManager:
 
 class Window:
     def __init__(self) -> None:
-        #Default window
+        # Initial login window
         self.login_window = tkinter.Tk()
         self.login_window.geometry("800x600")
         self.login_window.title("tModLoader Manager")
         frame = tkinter.Frame()
 
-        #Adding Widgets
+        # Adding Labels and Input Fields for SSH login
         ip_label = tkinter.Label(frame, text="Enter server ip", font=("Ariel", 18))
         username_label = tkinter.Label(frame, text="Enter server username", font=("Ariel", 18))
         password_label = tkinter.Label(frame, text="Enter server password", font=("Ariel", 18))
         target_directroy_label = tkinter.Label(frame, text="Enter path of docker compose file", font=("Ariel", 18))
-
+        
         self.ip_entry = tkinter.Entry(frame)
         self.username_entry = tkinter.Entry(frame)
         self.password_entry = tkinter.Entry(frame, show="*")
         self.target_directroy_entry = tkinter.Entry(frame)
         login_button = tkinter.Button(frame, text= "Login", command=lambda: Window.login(self))
 
-        #Placing Widgets
+        # Placing Widgets on the grid
         ip_label.grid(row=0,column=0,pady=40)
         username_label.grid(row=1,column=0,pady=40)
         password_label.grid(row=2,column=0,pady=40)
@@ -85,7 +85,7 @@ class Window:
         self.target_directroy_entry.grid(row=3,column=1,pady=40, columnspan = 3)
         login_button.grid(row=4,column=0,columnspan=2,pady=30)
 
-        #Displaying Everything
+        # Display the login window
         frame.pack()
         self.login_window.mainloop()
     
@@ -96,6 +96,7 @@ class Window:
         self.target_directory = self.target_directroy_entry.get()
 
         try:
+            
             self.mod_manager = ModManager(hostname, username, password)
             self.check_remote_path_exists(self.target_directory)
             self.show_mods(self.mod_manager)
@@ -106,12 +107,14 @@ class Window:
         output = self.mod_manager.execute_ssh_command(f"if [ -e '{target_directory}' ]; then echo 'Exists'; else echo 'Not Found'; fi").strip()
         if output == "Not Found":
             raise FileNotFoundError(f"The specified path was not found on the remote server: {target_directory}")
-        
-        find_command = f"find {target_directory} -type f -name 'test_docker-compose.yml'"
+
+        # Search for docker-compose.yml in the directory
+        find_command = f"find {target_directory} -type f -name 'docker-compose.yml'"
         docker_compose_path = self.mod_manager.execute_ssh_command(find_command).strip()
         if not docker_compose_path:
             raise FileNotFoundError(f"No 'docker-compose.yml' file found within the specified root directory: {target_directory}")
 
+        # Ensure the docker-compose.yml file is valid
         file_content = self.mod_manager.execute_ssh_command(f"cat {docker_compose_path}")
         try:
             yaml_content = yaml.safe_load(file_content)
@@ -129,7 +132,8 @@ class Window:
         canvas = tkinter.Canvas(self.mod_manager_window)
         scrollbar = tkinter.Scrollbar(self.mod_manager_window, orient="vertical", command=canvas.yview)
         self.scrollable_frame = tkinter.Frame(canvas)
-
+        
+        # Update scroll region dynamically when new mods are loaded
         self.scrollable_frame.bind(
         "<Configure>",
         lambda e: canvas.configure(
@@ -166,6 +170,7 @@ class Window:
         name = mod_name.get()
 
         if mod_object.var.get():
+            # If a mod is enabled, check its dependencies
             if mod_object.required_items:
                 result = tkinter.messagebox.askyesno(
                     title="Prerequisites Found", 
@@ -173,6 +178,7 @@ class Window:
                     )
    
                 if result:
+                    # Activate required mods if the user agrees
                     required_mod_objects = [mod for mod in self.installed_mods if mod.workshop_name in mod_object.required_items]
                     for required_mod in required_mod_objects:
                         if not required_mod.var.get():
@@ -209,12 +215,13 @@ class Window:
 
         sftp_client = self.mod_manager.create_sftp_client()
 
+        # Fetch the existing docker-compose.yml file from the server
         current_directory = os.path.dirname(os.path.abspath(__file__))
         local_path = os.path.join(current_directory, "docker-compose.yml")
- 
         remote_path = self.target_directory + "/test_docker-compose.yml"
         sftp_client.get(remote_path, local_path)
 
+        # Update the docker-compose.yml file with enabled mods
         with open(local_path, "r+") as file:
             lines = file.readlines()
             file.seek(0)
@@ -229,6 +236,7 @@ class Window:
         
         temp_remote_path = "/tmp/temp_upload_file"
 
+        # Upload the modified docker-compose.yml back to the server
         sftp_client.put(local_path, temp_remote_path)
 
         sudo_command = f"sudo mv {temp_remote_path} {remote_path} && sudo chmod 644 {remote_path}"
