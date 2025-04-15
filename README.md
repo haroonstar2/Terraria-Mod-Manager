@@ -16,7 +16,7 @@ Terraria Mod Manager is a Python app that simplifies mod management for remote t
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/Terraria-Mod-Manager.git
+git clone https://github.com/haroonstar2/Terraria-Mod-Manager.git
 ```
 
 2. Navigate to the project folder:
